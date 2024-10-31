@@ -6,7 +6,8 @@ This is a single Python script that will update [HorizonMW](https://github.com/H
 
 ## How to 🏃‍♂️🏃‍♂️🏃‍♂️
 1. Install any version of [Python 3](https://python.org/downloads/) (make sure to add it to PATH)
-2. Download [`hmw-updater.py`](https://) and place it in your **Call of Duty: Modern Warfare Remastered** directory
+2. Download [`hmw-updater.py`](https://github.com/xifil/hmw-updater-py/blob/master/hmw-updater.py) and place it in your **Call of Duty: Modern Warfare Remastered** directory
+   ![downloadrawfile.pngimaginescreenreader](https://github.com/xifil/hmw-updater-py/blob/master/assets/download_raw_file.png?raw=true)
 3. Run `py hmw-updater.py` in your game directory
 4. Profit
 
