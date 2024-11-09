@@ -89,9 +89,15 @@ def download_file(url, save_path_in):
 	else:
 		sys_out(f" -> {Fore.RED}failed ({response.status_code}){Fore.RESET}")
 
-sys_out(f"=---------------------------------------=")
+sys_out(f"=--------------- Welcome ---------------=")
 sys_out(f"  HMW Updater (one that actually works)  ")
 sys_out(f"                {Fore.LIGHTRED_EX}by @lifix{Fore.RESET}                ")
+sys_out(f"=---------------------------------------=")
+sys_out(f"")
+
+sys_out(f"=------------- System Info -------------=")
+sys_out(f" Platform: {sys.platform}")
+sys_out(f" Platform release: {platform.uname().release}")
 sys_out(f"=---------------------------------------=")
 sys_out(f"")
 
@@ -109,6 +115,14 @@ file_manifest_link = "https://price.horizonmw.org/manifest.json"
 cached_files_manifest = "hmw-updater-cache.json"
 stored_cache = {}
 current_cache = {}
+ignore_list = []
+
+def should_file_be_ignored(file: str) -> bool:
+	global ignore_list
+	for ignored_file in ignore_list:
+		if file.lower().startswith(ignored_file):
+			return True
+	return False
 
 for old_name_in, new_name_in in renamed_folders.items():
 	old_name = old_name_in
@@ -145,6 +159,9 @@ for module in file_manifest["Modules"]:
 	for file_path, file_hash in module["FilesWithHashes"].items():
 		current_cache[module["Name"]][file_path] = file_hash
 
+for ignored_file in file_manifest["IgnorePaths"]:
+	ignore_list.append(ignored_file.replace("h2m", "hmw").lower())
+
 skip_cached_files = False
 
 if os.path.exists(cached_files_manifest):
@@ -161,59 +178,91 @@ not_matching_files = []
 skip_user_maps_in = get_input("Would you like to skip verification of \"hmw-usermaps\"? (y/N): ", ["y", "n"], True)
 skip_user_maps = skip_user_maps_in.lower() == "y"
 
-for module_name, module in current_cache.items():
-	for file_path, file_hash in module.items():
-		cached_hash = None
-		if module_name in stored_cache:
-			if file_path in stored_cache[module_name]:
-				cached_hash = stored_cache[module_name][file_path]
-		else:
-			stored_cache[module_name] = {}
-		file_path_sys = file_path
-		if not is_windows():
-			file_path_sys = file_path_sys.replace("\\", "/")
-		sys_out(f"Checking {file_path}...", nl="")
-		if not os.path.isfile(file_path_sys):
-			missing_files.append(file_path)
-			sys_out(f" -> {Fore.RED}missing{Fore.RESET}")
-			continue
-		if (skip_user_maps and "hmw-usermaps\\" in file_path) or (skip_cached_files and cached_hash != None and file_hash == cached_hash):
-			skipped_files.append(file_path)
-			sys_out(f" -> {Fore.LIGHTBLACK_EX}skipped{Fore.RESET}")
-			continue
-		current_file_hash = hashlib.sha256(open(file_path_sys, "rb").read()).hexdigest()
-		stored_cache[module_name][file_path] = current_file_hash
-		if file_hash == current_file_hash:
-			sys_out(f" -> {Fore.GREEN}ok{Fore.RESET}")
-		else:
-			sys_out(f" -> {Fore.YELLOW}incorrect{Fore.RESET}")
-			not_matching_files.append(file_path)
-		checked_files.append(file_path)
+def verify_files():
+	global current_cache
+	global stored_cache
+	global skip_cached_files
+	global checked_files
+	global missing_files
+	global skipped_files
+	global not_matching_files
+	global skip_user_maps
+	checked_files = []
+	missing_files = []
+	skipped_files = []
+	not_matching_files = []
+	for module_name, module in current_cache.items():
+		for file_path, file_hash in module.items():
+			if should_file_be_ignored(file_path):
+				continue
+			cached_hash = None
+			if module_name in stored_cache:
+				if file_path in stored_cache[module_name]:
+					cached_hash = stored_cache[module_name][file_path]
+			else:
+				stored_cache[module_name] = {}
+			file_path_sys = file_path
+			if not is_windows():
+				file_path_sys = file_path_sys.replace("\\", "/")
+			if not os.path.isfile(file_path_sys) and file_path in stored_cache[module_name]:
+				del stored_cache[module_name][file_path]
+				cached_hash = None
+			sys_out(f"Checking {file_path}...", nl="")
+			if not os.path.isfile(file_path_sys):
+				missing_files.append(file_path)
+				sys_out(f" -> {Fore.RED}missing{Fore.RESET}")
+				continue
+			if (skip_user_maps and "hmw-usermaps\\" in file_path) or (skip_cached_files and cached_hash != None and file_hash == cached_hash):
+				skipped_files.append(file_path)
+				sys_out(f" -> {Fore.LIGHTBLACK_EX}skipped{Fore.RESET}")
+				continue
+			current_file_hash = hashlib.sha256(open(file_path_sys, "rb").read()).hexdigest()
+			stored_cache[module_name][file_path] = current_file_hash
+			if file_hash == current_file_hash:
+				sys_out(f" -> {Fore.GREEN}ok{Fore.RESET}")
+			else:
+				sys_out(f" -> {Fore.YELLOW}incorrect{Fore.RESET}")
+				not_matching_files.append(file_path)
+			checked_files.append(file_path)
 
-sys_out(f"Checked {len(checked_files)} file{'' if len(checked_files) == 1 else 's'}")
+	sys_out(f"Checked {len(checked_files)} file{'' if len(checked_files) == 1 else 's'}")
 
-if len(skipped_files) > 0:
-	sys_out("\nSkipped:")
-for skipped_file in skipped_files:
-	sys_out(f" - {Fore.LIGHTBLACK_EX}{skipped_file}{Fore.RESET}")
+	if len(skipped_files) > 0:
+		sys_out("\nSkipped:")
+	for skipped_file in skipped_files:
+		sys_out(f" - {Fore.LIGHTBLACK_EX}{skipped_file}{Fore.RESET}")
 
-if len(missing_files) > 0:
-	sys_out("\nMissing:")
-for missing_file in missing_files:
-	sys_out(f" - {Fore.RED}{missing_file}{Fore.RESET}")
+	if len(missing_files) > 0:
+		sys_out("\nMissing:")
+	for missing_file in missing_files:
+		sys_out(f" - {Fore.RED}{missing_file}{Fore.RESET}")
 
-if len(not_matching_files) > 0:
-	sys_out("\nIncorrect:")
-for not_matching_file in not_matching_files:
-	sys_out(f" - {Fore.YELLOW}{not_matching_file}{Fore.RESET}")
+	if len(not_matching_files) > 0:
+		sys_out("\nIncorrect:")
+	for not_matching_file in not_matching_files:
+		sys_out(f" - {Fore.YELLOW}{not_matching_file}{Fore.RESET}")
 
+verify_files()
+
+has_downloaded_any_new_files = False
 for module in file_manifest["Modules"]:
+	module_name = module["Name"]
 	download_path = module["DownloadInfo"]["DownloadPath"].rstrip("/").rstrip("\\")
 	for file_path, file_hash in module["FilesWithHashes"].items():
+		if should_file_be_ignored(file_path):
+			continue
 		if (not file_path in missing_files and not file_path in not_matching_files) or file_path in skipped_files:
 			continue
+		if module_name in stored_cache:
+			if file_path in stored_cache[module_name]:
+				del stored_cache[module_name][file_path]
 		download_link = f"https://price.horizonmw.org/{download_path}/{urllib.parse.quote(file_path.replace('\\', '/'))}"
 		download_file(download_link, file_path)
+		has_downloaded_any_new_files = True
+
+if has_downloaded_any_new_files:
+	skip_cached_files = True
+	verify_files()
 
 with open(cached_files_manifest, "w") as file:
 	json.dump(stored_cache, file, indent="\t")
