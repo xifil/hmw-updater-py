@@ -44,7 +44,7 @@ def get_input(text: str, expected: list[str], accept_empty: bool = False, ignore
 	buf = None
 	while buf == None or buf == "":
 		buf_temp = input(text)
-		if len(buf_temp) < 1:
+		if len(buf_temp) < 1 and accept_empty:
 			return buf_temp
 		for expected_item in expected:
 			if (ignore_case and buf_temp.lower() == expected_item.lower()) or (not ignore_case and buf_temp == expected_item):
@@ -107,6 +107,29 @@ renamed_folders = {
 }
 renamed_files = {
 	"h2m-mod.exe": "hmw-mod.exe",
+	"hmw-mod\\zone\\de_h2m_common.ff": "hmw-mod\\zone\\de_hmw_common.ff",
+	"hmw-mod\\zone\\eng_h2m_common.ff": "hmw-mod\\zone\\eng_hmw_common.ff",
+	"hmw-mod\\zone\\h2m_ar1.ff": "hmw-mod\\zone\\hmw_ar1.ff",
+	"hmw-mod\\zone\\h2m_attachments.ff": "hmw-mod\\zone\\hmw_attachments.ff",
+	"hmw-mod\\zone\\h2m_clantags.ff": "hmw-mod\\zone\\hmw_clantags.ff",
+	"hmw-mod\\zone\\h2m_files.ff": "hmw-mod\\zone\\hmw_files.ff",
+	"hmw-mod\\zone\\h2m_killstreak.ff": "hmw-mod\\zone\\hmw_killstreak.ff",
+	"hmw-mod\\zone\\h2m_killstreak.pak": "hmw-mod\\zone\\hmw_killstreak.pak",
+	"hmw-mod\\zone\\h2m_launcher.ff": "hmw-mod\\zone\\hmw_launcher.ff",
+	"hmw-mod\\zone\\h2m_launcher.pak": "hmw-mod\\zone\\hmw_launcher.pak",
+	"hmw-mod\\zone\\h2m_launcher-extract.dat": "hmw-mod\\zone\\hmw_launcher-extract.dat",
+	"hmw-mod\\zone\\h2m_patch_code_post_gfx_mp.ff": "hmw-mod\\zone\\hmw_patch_code_post_gfx_mp.ff",
+	"hmw-mod\\zone\\h2m_patch_common_mp.ff": "hmw-mod\\zone\\hmw_patch_common_mp.ff",
+	"hmw-mod\\zone\\h2m_patch_ui_mp.ff": "hmw-mod\\zone\\hmw_patch_ui_mp.ff",
+	"hmw-mod\\zone\\h2m_post_gfx.ff": "hmw-mod\\zone\\hmw_post_gfx.ff",
+	"hmw-mod\\zone\\h2m_post_gfx.pak": "hmw-mod\\zone\\hmw_post_gfx.pak",
+	"hmw-mod\\zone\\h2m_pre_gfx.ff": "hmw-mod\\zone\\hmw_pre_gfx.ff",
+	"hmw-mod\\zone\\h2m_rangers.ff": "hmw-mod\\zone\\hmw_rangers.ff",
+	"hmw-mod\\zone\\h2m_rangers.pak": "hmw-mod\\zone\\hmw_rangers.pak",
+	"hmw-mod\\zone\\h2m_shotgun.ff": "hmw-mod\\zone\\hmw_shotgun.ff",
+	"hmw-mod\\zone\\h2m_smg.ff": "hmw-mod\\zone\\hmw_smg.ff",
+	"hmw-mod\\zone\\rus_h2m_common.ff": "hmw-mod\\zone\\rus_hmw_common.ff",
+	"hmw-mod\\zone\\spa_h2m_common.ff": "hmw-mod\\zone\\spa_hmw_common.ff",
 	"players2\\user\\h2mcdta": "players2\\user\\hmwcdta",
 	"players2\\user\\h2mdta": "players2\\user\\hmwdta"
 }
@@ -293,7 +316,7 @@ if is_windows():
 	open_game_in = get_input("Would you like to open the game? (Y/n): ", ["y", "n"], True)
 	open_game = open_game_in.lower() != "n"
 	if open_game:
-		res = subprocess.run(["cmd.exe", "/C", "start", game_executable], capture_output=True, text=True).returncode
+		subprocess.Popen(["cmd.exe", "/C", "start", game_executable])
 		sys_out(f"{Fore.GREEN}Enjoy!{Fore.RESET}")
 	else:
 		sys_out(f"{Fore.GREEN}Goodbye!{Fore.RESET}")
