@@ -1,3 +1,4 @@
+import argparse
 import hashlib
 import json
 import os
@@ -48,6 +49,22 @@ except:
 	from colorama import Fore
 
 colorama.init()
+
+parser = argparse.ArgumentParser(description="xifil's HMW Updater")
+
+# Define arguments as flags (no value expected)
+parser.add_argument("-reverify", action="store_true", help="Reverify all files (recommended if you think you have corrupted game files)")
+parser.add_argument("-showskipped", action="store_true", help="Print out files that have been skipped in the checking process in post-check summary")
+parser.add_argument("-skipusermaps", action="store_true", help="Skip verification of hmw-usermaps")
+parser.add_argument("-nolaunch", action="store_true", help="Don't launch HMW after updating/verifying")
+
+# Parse the arguments
+args = parser.parse_args()
+
+arg_in_reverify = args.reverify
+arg_in_show_skipped = args.showskipped
+arg_in_skip_usermaps = args.skipusermaps
+arg_in_no_launch = args.nolaunch
 
 current_cr_line_len = 0
 def sys_out(text: str, nl: str = "\n"):
@@ -235,18 +252,21 @@ skip_cached_files = False
 if os.path.exists(cached_files_manifest):
 	with open(cached_files_manifest, "r") as file:
 		stored_cache = json.load(file)
-	skip_cached_files_in = get_input("Would you like to skip verification of cached files? (Y/n): ", ["y", "n"], True)
-	skip_cached_files = skip_cached_files_in.lower() != "n"
+	# skip_cached_files_in = get_input("Would you like to skip verification of cached files? (Y/n): ", ["y", "n"], True)
+	# skip_cached_files = skip_cached_files_in.lower() != "n"
+	skip_cached_files = not arg_in_reverify
 
 checked_files = []
 missing_files = []
 skipped_files = []
 not_matching_files = []
 
-skip_user_maps_in = get_input("Would you like to skip verification of \"hmw-usermaps\"? (y/N): ", ["y", "n"], True)
-skip_user_maps = skip_user_maps_in.lower() == "y"
+# skip_user_maps_in = get_input("Would you like to skip verification of \"hmw-usermaps\"? (y/N): ", ["y", "n"], True)
+# skip_user_maps = skip_user_maps_in.lower() == "y"
+skip_user_maps = arg_in_skip_usermaps
 
 def verify_files():
+	global arg_in_show_skipped
 	global current_cache
 	global stored_cache
 	global skip_cached_files
@@ -295,10 +315,11 @@ def verify_files():
 
 	sys_out(f"Checked {len(checked_files)} file{'' if len(checked_files) == 1 else 's'}")
 
-	if len(skipped_files) > 0:
-		sys_out("\nSkipped:")
-	for skipped_file in skipped_files:
-		sys_out(f" - {Fore.LIGHTBLACK_EX}{skipped_file}{Fore.RESET}")
+	if arg_in_show_skipped:
+		if len(skipped_files) > 0:
+			sys_out("\nSkipped:")
+		for skipped_file in skipped_files:
+			sys_out(f" - {Fore.LIGHTBLACK_EX}{skipped_file}{Fore.RESET}")
 
 	if len(missing_files) > 0:
 		sys_out("\nMissing:")
@@ -358,8 +379,9 @@ if "wine" in platform.uname().release.lower() or not is_windows():
 sys_out("My job here is done. GLHF.")
 
 if is_windows():
-	open_game_in = get_input("Would you like to open the game? (Y/n): ", ["y", "n"], True)
-	open_game = open_game_in.lower() != "n"
+	# open_game_in = get_input("Would you like to open the game? (Y/n): ", ["y", "n"], True)
+	# open_game = open_game_in.lower() != "n"
+	open_game = not arg_in_no_launch
 	if open_game:
 		subprocess.Popen(["cmd.exe", "/C", "start", game_executable])
 		sys_out(f"{Fore.GREEN}Enjoy!{Fore.RESET}")
