@@ -52,16 +52,15 @@ colorama.init()
 current_cr_line_len = 0
 def sys_out(text: str, nl: str = "\n"):
 	global current_cr_line_len
+	cr_line_pad = ""
 	previous_cr_line_len = current_cr_line_len
 	if text.startswith("\r"):
 		current_cr_line_len = len(text) - 1
-	else:
-		current_cr_line_len = 0
-	cr_line_pad = ""
-	if text.startswith("\r"):
 		if previous_cr_line_len > current_cr_line_len:
 			cr_line_pad = " " * (previous_cr_line_len - current_cr_line_len)
 			cr_line_pad += "\b" * (previous_cr_line_len - current_cr_line_len)
+	else:
+		current_cr_line_len = 0
 	sys.stdout.write(text + cr_line_pad + nl)
 	sys.stdout.flush()
 
