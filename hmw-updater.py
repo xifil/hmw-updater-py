@@ -6,38 +6,63 @@ import subprocess
 import sys
 import urllib.parse
 
+def do_nothing() -> int:
+	return 0
+
+def install_package(package_name: str, package: str):
+	print(f"Installing {package_name}...")
+	try:
+		_ = subprocess.run(["pip", "install", package], capture_output=True, text=True).returncode
+		print(f"Installed {package_name} successfully.")
+		return
+	except:
+		do_nothing()
+	try:
+		_ = subprocess.run(["pip3", "install", package], capture_output=True, text=True).returncode
+		print(f"Installed {package_name} successfully.")
+		return
+	except:
+		do_nothing()
+	try:
+		_ = subprocess.run(["python", "-m", "pip", "install", package], capture_output=True, text=True).returncode
+		print(f"Installed {package_name} successfully.")
+		return
+	except:
+		do_nothing()
+	print(f"Failed to install {package_name}, please install it manually using this command:")
+	print(f"  pip install {package}")
+	exit()
+
 try:
 	import requests
 except:
-	print("Installing Requests...")
-	res = subprocess.run(["pip", "install", "requests"], capture_output=True, text=True).returncode
-	try:
-		import requests
-		print("Installed Requests successfully.")
-	except:
-		print("Failed to install Requests, please install it manually using this command:")
-		print("  pip install requests")
-		exit()
+	install_package("Requests", "requests")
+	import requests
 
 try:
 	import colorama
 	from colorama import Fore
 except:
-	print("Installing Colorama...")
-	res = subprocess.run(["pip", "install", "colorama"], capture_output=True, text=True).returncode
-	try:
-		import colorama
-		from colorama import Fore
-		print("Installed Colorama successfully.")
-	except:
-		print("Failed to install Colorama, please install it manually using this command:")
-		print("  pip install colorama")
-		exit()
+	install_package("Colorama", "colorama")
+	import colorama
+	from colorama import Fore
 
 colorama.init()
 
+current_cr_line_len = 0
 def sys_out(text: str, nl: str = "\n"):
-	sys.stdout.write(text + nl)
+	global current_cr_line_len
+	previous_cr_line_len = current_cr_line_len
+	if text.startswith("\r"):
+		current_cr_line_len = len(text) - 1
+	else:
+		current_cr_line_len = 0
+	cr_line_pad = ""
+	if text.startswith("\r"):
+		if previous_cr_line_len > current_cr_line_len:
+			cr_line_pad = " " * (previous_cr_line_len - current_cr_line_len)
+			cr_line_pad += "\b" * (previous_cr_line_len - current_cr_line_len)
+	sys.stdout.write(text + cr_line_pad + nl)
 	sys.stdout.flush()
 
 def get_input(text: str, expected: list[str], accept_empty: bool = False, ignore_case = True) -> str:
@@ -72,19 +97,40 @@ def download_file(url, save_path_in):
 	if len(parent_dir) > 0:
 		os.makedirs(os.path.dirname(save_path), exist_ok=True)
 	response_head = requests.head(url)
+	size_in_bytes = None
+	content_size_str = ""
 	if response_head.status_code == 200:
 		content_size_str = ""
 		content_length = response_head.headers.get("Content-Length")
 		if content_length is not None:
 			size_in_bytes = int(content_length)
 			content_size_str = f" {Fore.LIGHTBLACK_EX}({format_size(size_in_bytes)}){Fore.RESET}"
-		sys_out(f"Downloading \"{save_path}\"{content_size_str}...", nl="")
-	else:
-		sys_out(f"Downloading \"{save_path}\"...", nl="")
+	sys_out(f"Downloading \"{save_path}\"{content_size_str}...", nl="")
+	# old download method, would get "stuck" (just really slow) because
+	# there was no progress display and the server would keep dying
+	# *** AT THE TIME OF TESTING, THAT IS ***
+	"""
 	response = requests.get(url)
 	if response.status_code == 200:
 		with open(save_path, "wb") as file:
 			file.write(response.content)
+		sys_out(f" -> {Fore.GREEN}ok{Fore.RESET}")
+	else:
+		sys_out(f" -> {Fore.RED}failed ({response.status_code}){Fore.RESET}")
+	"""
+	response = requests.get(url, stream=True)
+	if response.status_code == 200:
+		total_bytes_written = 0
+		with open(save_path, 'wb') as file:
+			for chunk in response.iter_content(chunk_size=16 * 1024): # 16 KB chunk size, very fast
+				file.write(chunk)
+				total_bytes_written += len(chunk)
+
+				if size_in_bytes is not None and size_in_bytes > 0:
+					percent = (total_bytes_written / size_in_bytes) * 100
+					size_done_str = f" {Fore.LIGHTBLACK_EX}({format_size(total_bytes_written)} / {format_size(size_in_bytes)}, {percent:.2f}%){Fore.RESET}"
+					sys_out(f"\rDownloading \"{save_path}\"{size_done_str}...", nl="")
+		sys_out(f"\rDownloading \"{save_path}\"{content_size_str}...", nl="")
 		sys_out(f" -> {Fore.GREEN}ok{Fore.RESET}")
 	else:
 		sys_out(f" -> {Fore.RED}failed ({response.status_code}){Fore.RESET}")
