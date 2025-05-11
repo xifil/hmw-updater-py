@@ -212,7 +212,6 @@ def should_file_be_ignored(file: str) -> bool:
 	global ignore_list
 	for ignored_file in ignore_list:
 		if file.lower().startswith(ignored_file):
-			sys_out(f"{Fore.LIGHTBLACK_EX}file {file} ignored because {ignored_file}")
 			return True
 	return False
 
