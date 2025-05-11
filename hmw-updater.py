@@ -134,22 +134,28 @@ def download_file(url, save_path_in):
 	else:
 		sys_out(f" -> {Fore.RED}failed ({response.status_code}){Fore.RESET}")
 	"""
-	response = requests.get(url, stream=True)
-	if response.status_code == 200:
-		total_bytes_written = 0
-		with open(save_path, 'wb') as file:
-			for chunk in response.iter_content(chunk_size=16 * 1024): # 16 KB chunk size, very fast
-				file.write(chunk)
-				total_bytes_written += len(chunk)
+	while True:
+		try:
+			response = requests.get(url, stream=True)
+			if response.status_code == 200:
+				total_bytes_written = 0
+				with open(save_path, 'wb') as file:
+					for chunk in response.iter_content(chunk_size=16 * 1024): # 16 KB chunk size, very fast
+						file.write(chunk)
+						total_bytes_written += len(chunk)
 
-				if size_in_bytes is not None and size_in_bytes > 0:
-					percent = (total_bytes_written / size_in_bytes) * 100
-					size_done_str = f" {Fore.LIGHTBLACK_EX}({format_size(total_bytes_written)} / {format_size(size_in_bytes)}, {percent:.2f}%){Fore.RESET}"
-					sys_out(f"\rDownloading \"{save_path}\"{size_done_str}...", nl="")
-		sys_out(f"\rDownloading \"{save_path}\"{content_size_str}...", nl="")
-		sys_out(f" -> {Fore.GREEN}ok{Fore.RESET}")
-	else:
-		sys_out(f" -> {Fore.RED}failed ({response.status_code}){Fore.RESET}")
+						if size_in_bytes is not None and size_in_bytes > 0:
+							percent = (total_bytes_written / size_in_bytes) * 100
+							size_done_str = f" {Fore.LIGHTBLACK_EX}({format_size(total_bytes_written)} / {format_size(size_in_bytes)}, {percent:.2f}%){Fore.RESET}"
+							sys_out(f"\rDownloading \"{save_path}\"{size_done_str}...", nl="")
+				sys_out(f"\rDownloading \"{save_path}\"{content_size_str}...", nl="")
+				sys_out(f" -> {Fore.GREEN}ok{Fore.RESET}")
+				break
+			else:
+				sys_out(f" -> {Fore.RED}failed ({response.status_code}){Fore.RESET}")
+				break
+		except:
+			continue
 
 sys_out(f"=--------------- Welcome ---------------=")
 sys_out(f"  HMW Updater (one that actually works)  ")
@@ -206,6 +212,7 @@ def should_file_be_ignored(file: str) -> bool:
 	global ignore_list
 	for ignored_file in ignore_list:
 		if file.lower().startswith(ignored_file):
+			sys_out(f"{Fore.LIGHTBLACK_EX}file {file} ignored because {ignored_file}")
 			return True
 	return False
 
@@ -239,13 +246,23 @@ else:
 	exit()
 
 for module in file_manifest["Modules"]:
-	current_cache[module["Name"]] = {}
-	sys_out(f"{Fore.LIGHTBLACK_EX}Adding module \"{module["Name"]}\" to verification list...{Fore.RESET}")
+	if module["Name"] == "launcher":
+		continue
+	sys_out(f"{Fore.LIGHTBLACK_EX}Adding module \"{module['Name']}-{module['Version']}\" to verification list...{Fore.RESET}")
 	for file_path, file_hash in module["FilesWithHashes"].items():
-		current_cache[module["Name"]][file_path] = file_hash
+		for cached_module, cached_module_data in current_cache.items():
+			cached_files_to_remove = []
+			for cached_file, cached_file_hash in cached_module_data.items():
+				if cached_file == file_path:
+					cached_files_to_remove.append(cached_file)
+			for cached_file_to_remove in cached_files_to_remove:
+				current_cache[cached_module].pop(cached_file_to_remove)
+	current_cache[f"{module['Name']}-{module['Version']}"] = {}
+	for file_path, file_hash in module["FilesWithHashes"].items():
+		current_cache[f"{module['Name']}-{module['Version']}"][file_path] = file_hash
 
 for ignored_file in file_manifest["IgnorePaths"]:
-	ignore_list.append(ignored_file.replace("h2m", "hmw").lower())
+	ignore_list.append(ignored_file.lower())
 
 skip_cached_files = False
 
@@ -295,7 +312,7 @@ def verify_files():
 			if not os.path.isfile(file_path_sys) and file_path in stored_cache[module_name]:
 				del stored_cache[module_name][file_path]
 				cached_hash = None
-			sys_out(f"Checking {file_path}...", nl="")
+			sys_out(f"{Fore.RESET}[{Fore.LIGHTCYAN_EX}{module_name}{Fore.RESET}] Checking {file_path}...", nl="")
 			if not os.path.isfile(file_path_sys):
 				missing_files.append(file_path)
 				sys_out(f" -> {Fore.RED}missing{Fore.RESET}")
@@ -335,7 +352,7 @@ verify_files()
 
 has_downloaded_any_new_files = False
 for module in file_manifest["Modules"]:
-	module_name = module["Name"]
+	module_name = f"{module['Name']}-{module['Version']}"
 	download_path = module["DownloadInfo"]["DownloadPath"].rstrip("/").rstrip("\\")
 	for file_path, file_hash in module["FilesWithHashes"].items():
 		if should_file_be_ignored(file_path):
